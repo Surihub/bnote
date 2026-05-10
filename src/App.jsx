@@ -506,27 +506,43 @@ export default function App() {
   useEffect(() => {
     if (mode !== 'app' || !user) return;
     const ref = collection(db, 'artifacts', appId, 'users', user.uid, 'notes');
-    return onSnapshot(ref, (snap) => {
-      const data = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(n => !n.isDeleted)
-        .sort((a, b) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0));
-      setNotes(data);
-      if (!activeNoteId && data.length > 0) setActiveNoteId(data[0].id);
-    });
+    return onSnapshot(
+      ref,
+      (snap) => {
+        setAuthError('');
+        const data = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(n => !n.isDeleted)
+          .sort((a, b) => (b.updatedAt?.seconds ?? 0) - (a.updatedAt?.seconds ?? 0));
+        setNotes(data);
+        if (!activeNoteId && data.length > 0) setActiveNoteId(data[0].id);
+      },
+      (err) => {
+        console.error('Firestore 노트 읽기 오류:', err);
+        if (err.code === 'permission-denied') {
+          setAuthError('⚠️ Firestore 보안 규칙이 설정되지 않았습니다. Firebase Console → Firestore → 규칙에서 읽기/쓰기를 허용해주세요.');
+        } else {
+          setAuthError(`데이터베이스 오류: ${err.message}`);
+        }
+      }
+    );
   }, [mode, user]);
 
   // ── 폴더 Firestore 동기화 ─────────────────────────────────────────────────
   useEffect(() => {
     if (mode !== 'app' || !user) return;
     const ref = collection(db, 'artifacts', appId, 'users', user.uid, 'folders');
-    return onSnapshot(ref, (snap) => {
-      const data = snap.docs
-        .map(d => ({ id: d.id, ...d.data() }))
-        .filter(f => !f.isDeleted)
-        .sort((a, b) => (a.createdAt?.seconds ?? 0) - (b.createdAt?.seconds ?? 0));
-      setFolders(data);
-    });
+    return onSnapshot(
+      ref,
+      (snap) => {
+        const data = snap.docs
+          .map(d => ({ id: d.id, ...d.data() }))
+          .filter(f => !f.isDeleted)
+          .sort((a, b) => (a.createdAt?.seconds ?? 0) - (b.createdAt?.seconds ?? 0));
+        setFolders(data);
+      },
+      (err) => { console.error('Firestore 폴더 읽기 오류:', err); }
+    );
   }, [mode, user]);
 
   const activeNote = notes.find(n => n.id === activeNoteId);
@@ -808,7 +824,9 @@ export default function App() {
                 <input ref={newFolderInputRef} value={newFolderName}
                   onChange={e => setNewFolderName(e.target.value)}
                   onKeyDown={e => {
-                    if (e.key === 'Enter') handleCreateFolder();
+                    // 한글 IME 조합 중 Enter는 무시 (두 번 생성 방지)
+                    const isComposing = e.nativeEvent?.isComposing || e.nativeEvent?.keyCode === 229;
+                    if (e.key === 'Enter' && !isComposing) handleCreateFolder();
                     if (e.key === 'Escape') { setIsAddingFolder(false); setNewFolderName(''); }
                   }}
                   placeholder="폴더 이름"
