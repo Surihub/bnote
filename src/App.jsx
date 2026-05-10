@@ -842,16 +842,18 @@ export default function App() {
           )}
         </div>
 
-        <div className="px-4 pb-3 text-[10px] text-gray-400 flex justify-between items-center flex-shrink-0">
+        <div className="px-4 pb-3 text-[10px] text-gray-400 flex flex-col gap-1 flex-shrink-0">
           {mode === 'guest' ? (
-            <>
+            <div className="flex justify-between items-center">
               <span className="flex items-center gap-1 text-amber-500"><AlertCircle size={10} /> 저장 안 됨</span>
               <button onClick={enterGoogleSync} className="text-blue-500 hover:underline">구글 로그인</button>
-            </>
+            </div>
           ) : (
             <>
-              <span>ID: {user?.uid.slice(0, 6)}</span>
-              {isSaving ? <span className="text-blue-500">동기화 중...</span> : <span>저장 완료</span>}
+              <div className="truncate text-gray-500">{user?.email || user?.displayName || user?.uid.slice(0, 8)}</div>
+              <div className="flex justify-between">
+                <span>{isSaving ? <span className="text-blue-500">동기화 중...</span> : '저장 완료'}</span>
+              </div>
             </>
           )}
         </div>
@@ -860,7 +862,15 @@ export default function App() {
       {/* ── 메인 ─────────────────────────────────────────────────────────── */}
       <main className="flex-1 flex flex-col min-w-0">
         {authError && (
-          <div className="mx-4 mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">{authError}</div>
+          <div className="mx-4 mt-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700 leading-relaxed">
+            <p className="font-bold mb-1">⚠️ 데이터베이스 연결 오류</p>
+            <p>{authError}</p>
+            {authError.includes('Firestore') && (
+              <p className="mt-2 font-medium">
+                👉 <a href="https://console.firebase.google.com/project/bnote-4e383/firestore/rules" target="_blank" rel="noreferrer" className="underline text-red-800">Firebase Console → Firestore → 규칙</a>에서 규칙을 설정해주세요.
+              </p>
+            )}
+          </div>
         )}
 
         <header className="h-12 border-b flex items-center px-4 gap-1 flex-shrink-0">
